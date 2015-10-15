@@ -169,6 +169,18 @@ public class Lexer {
 //							tokenList.add(new Token(state, brace1 + "", 0));
 //							state = START;
 							break;
+						case "OTHER": 
+							System.out.println("OTHER");
+							if(WHITESPACE == cat)
+							{
+								lastPosition = position + 1;
+								state = START;
+							}
+							else 
+							{
+								addOtherTokenToList(currentChar + "");
+							}
+							break;							
 						default:
 							break;
 						}
@@ -214,7 +226,10 @@ public class Lexer {
 							//backup();
 							// do_id();
 							addTokenToList();
-							state = PARENS1;		
+							state = START;
+							lastPosition = position + 2;
+							backup();
+							//System.out.println("lp = " + lastPosition + ", pos = " + position);
 						}
 						
 						break;
@@ -227,8 +242,6 @@ public class Lexer {
 						else 
 						{
 							addOtherTokenToList(parens1 + "");
-//							tokenList.add(new Token(state, parens1 + "", 0));
-//							state = START;
 						}
 						break;
 					case SL1:
@@ -300,7 +313,7 @@ public class Lexer {
 		else if(isSign(character)) { return SIGN; }
 		else if(isWhiteSpace(character)) { return WHITESPACE; } 
 		else if(isSL1(character)) { return "SL1"; } 
-		else if(isOther(character)) { return getOther(character); } 
+		else if(isOther(character)) { return "OTHER"; } 
 		
 		
 		return "No Category";
@@ -385,8 +398,10 @@ public class Lexer {
 	
 	public void addTokenToList()
 	{
-		String data = "";
+		System.out.println("addTokenToList, lp = " + lastPosition + ", pos = " + position);
 		
+		String data = "";
+	
 		for(int i = lastPosition; i < position; i++)
 		{
 			data += characterList.get(i);
@@ -401,6 +416,7 @@ public class Lexer {
 	{
 		tokenList.add(new Token(state, data, 0));
 		state = START;
+		System.out.println("addOtherTokenToList, lp = " + lastPosition + ", pos = " + position);
 	}
 	
 	public char extractComment(char currentChar)
