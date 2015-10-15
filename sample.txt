@@ -1,0 +1,6 @@
+prog main 
+{
+	//this is a comment
+	vars( x = 3; )
+	print("x = ", x);
+}
