@@ -1,11 +1,15 @@
 package com.csulb.compiler;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
 public class Lexer {
 	
+	// States
 	private final String START = "START";
 	private final String COMMENT = "COMMENT";
 	private final String LU1 = "LU1";
@@ -16,7 +20,11 @@ public class Lexer {
 	private final String WHITESPACE = "WHITESPACE";
 	private final String SLASH = "SLASH";
 	private final String OTHER = "OTHER";
+	private final String SL1 = "SL1";
+	private final String BRACE1 = "BRACE1";
+	private final String PARENS1 = "PARENS1";
 	
+	// Signs
 	private final char signPlus = '+';
 	private final char signMinus = '-';
 	
@@ -85,26 +93,18 @@ public class Lexer {
 			e.printStackTrace();
 		}
 		lexing();
-		//printList();
 	}
 	
 	public void readProgram(String fileName) throws IOException 
 	{
 		FileReader fileReader = new FileReader(fileName);
-		
-		String fileContents = "";
 		int i;
+		
 		while((i = fileReader.read()) != -1) {
 		   char ch = (char)i;
-//		   System.out.println(i + ", " + ch);
-//		   System.out.println("isChar = " + isChar(i) + "\n");
-		 
-		   fileContents += ch; 
 		   
 		   characterList.add(ch);
 		}
-		
-		//System.out.println(fileContents);
 	}
 	
 	public void printList()
@@ -123,133 +123,160 @@ public class Lexer {
 		lastPosition = 0;
 		char currentChar = 0;
 		
-		while(position < characterList.size())
-		{
-			currentChar = nextChar();
+		try {
+			PrintWriter writer = new PrintWriter("the-file-name.txt", "UTF-8");
 			
-			System.out.println("\nposition = " + position + ", currentChar = " + currentChar 
-					+ " , " + (int)currentChar);
-			
-			
-			
-			if(9 != (int)currentChar &&     // horizontal tab
-				10 != (int)currentChar && 	// new line feed
-				13 != (int)currentChar && 	// carriage return
-				32 != (int)currentChar &&	// space
-				!getCategory(currentChar).equals("No Category"))	// skip anything not a number
-																	// or digit for now
+			while(position < characterList.size())
 			{
-				String cat = getCategory(currentChar);
+				currentChar = nextChar();
 				
-				switch(state)
+				System.out.println("\nposition = " + position + ", currentChar = " + currentChar 
+						+ " , " + (int)currentChar);
+				writer.println("\nposition = " + position + ", currentChar = " + currentChar 
+						+ " , " + (int)currentChar);
+				
+				
+				if(9 != (int)currentChar &&     // horizontal tab
+					10 != (int)currentChar && 	// new line feed
+					13 != (int)currentChar && 	// carriage return
+					!getCategory(currentChar).equals("No Category"))	// skip anything not a number
+																		// or digit for now
 				{
-				case START:
-//					String cat = getCategory(currentChar);
-					System.out.println("cat = " + cat);
+					String cat = getCategory(currentChar);
+					System.out.println("state = " + state);
 					
-					switch(cat)
+					switch(state)
 					{
+					case START:
+//						String cat = getCategory(currentChar);
+						System.out.println("cat = " + cat);
+						writer.println("cat = " + cat);
+						
+						switch(cat)
+						{
+						case LU1:
+							state = LU1;
+							break;
+						case DIGIT:
+							state = DIGIT;
+							break;
+						case SIGN:
+							//position++;
+							state = "num1"; 
+						// NEED ANOTHER CASE FOR OTHER case OTHER:
+						case BRACE1:
+							addOtherTokenToList(brace1 + "");
+//							tokenList.add(new Token(state, brace1 + "", 0));
+//							state = START;
+							break;
+						default:
+							break;
+						}
+						break;
 					case LU1:
-						state = LU1;
+//						String catt = getCategory(currentChar);
+						System.out.println("in LU1, catt = " + cat + ", state = " + state);
+						writer.println("in LU1, catt = " + cat + ", state = " + state);
+						
+						if(LUTR == cat)
+						{
+							// save_id_char(currentChar);
+							state = ID;
+						}
+						else if(WHITESPACE == cat) 
+						{
+							writer.println("made it to LU1!");
+							addTokenToList();
+						}
+						else 
+						{
+							backup();
+							// do_id();
+						}
+						
 						break;
-					case DIGIT:
-						state = DIGIT;
+					case ID:
+						System.out.println("in ID, cattt = " + cat + ", state = " + state);
+						writer.println("in ID, cattt = " + cat + ", state = " + state);
+						
+						if(LUTR == cat)
+						{
+							// save_id_char(currentChar);
+							state = ID;
+						}
+						else if(WHITESPACE == cat)
+						{
+							addTokenToList();
+							//state = START;
+						}
+						else 
+						{
+							//backup();
+							// do_id();
+							addTokenToList();
+							state = PARENS1;		
+						}
+						
 						break;
-					case SIGN:
-						//position++;
-						state = "num1"; 
-					// NEED ANOTHER CASE FOR OTHER case OTHER:
-					case brace1 + "":
-						tokenList.add(new Token(state, brace1 + "", 0));
-						state = START;
+					case PARENS1: 
+						if(WHITESPACE == cat)
+						{
+							lastPosition = position + 1;
+							state = START;
+						}
+						else 
+						{
+							addOtherTokenToList(parens1 + "");
+//							tokenList.add(new Token(state, parens1 + "", 0));
+//							state = START;
+						}
 						break;
-					default:
-						break;
-					}
-					break;
-				case LU1:
-//					String catt = getCategory(currentChar);
-					System.out.println("in LU1, catt = " + cat + ", state = " + state);
-					
-					if(LUTR == cat)
-					{
-						// save_id_char(currentChar);
-						state = ID;
-					}
-					else 
-					{
-						backup();
-						// do_id();
-					}
-					
-					break;
-				case ID:
-//					String cattt = getCategory(currentChar);
-					System.out.println("in ID, cattt = " + cat + ", state = " + state);
-					if(LUTR == cat)
-					{
-						// save_id_char(currentChar);
-						state = ID;
-					}
-					else 
-					{
-						backup();
-						// do_id();
-					}
-					
-					//position++;
-					break;
-				case "SL1":
-					position += 1;
-					currentChar = nextChar();
-					if('/' == currentChar)
-					{
-						System.out.println("made it");
+					case SL1:
 						position += 1;
 						currentChar = nextChar();
-						while(10 != currentChar)
+						if('/' == currentChar)
 						{
-							position += 1;
-							currentChar = nextChar();
+							currentChar = extractComment(currentChar);
 						}
-						lastPosition = position;
+						else 
+						{
+							backup();
+						}
+						break;
+					default:
+						state = "";
+						System.out.println("default state = " + state);
+						writer.println("default state = " + state);
+						break;
 					}
-					else 
-					{
-						backup();
-					}
-				default:
-					state = "";
-					System.out.println("state = " + state);
-					break;
 				}
-			}
-			else if(32 == currentChar && state.equals(ID))
-			{
-				String data = "";
-				
-				for(int i = lastPosition; i < position; i++)
+				else if(10 == currentChar)
 				{
-					data += characterList.get(i);
+					lastPosition = position + 1;
+					state = START;
 				}
-				tokenList.add(new Token(state, data, 0));
-				
-				state = START;
-				lastPosition = position + 1;
-			}
-			else if(10 == currentChar)
-			{
-				lastPosition = position;
-				state = START;
-			}
-			else if(13 == currentChar || 9 == currentChar)
-			{
-				lastPosition = position;
-			}
+				else if(13 == currentChar || 9 == currentChar)
+				{
+					lastPosition = position + 1;
+					state = START;
+					System.out.println("state = "+ state);
+					writer.println("state = "+ state);
+				}
 
-			System.out.println("break");
-			position++;
+				System.out.println("state = " + state + "\nbreak");
+				writer.println("state = " + state + "\nbreak");
+				position++;
+			}
+			
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		
+
 	}
 	
 	public char nextChar()
@@ -263,9 +290,7 @@ public class Lexer {
 	}
 	
 	public String getCategory(char character)
-	{
-		//int characterInt = (int)character;
-		
+	{		
 		if(isChar(character) && !LU1.equals(state) && !ID.equals(state)) 
 		{ 
 			return LU1; 
@@ -275,7 +300,7 @@ public class Lexer {
 		else if(isSign(character)) { return SIGN; }
 		else if(isWhiteSpace(character)) { return WHITESPACE; } 
 		else if(isSL1(character)) { return "SL1"; } 
-		else if(isBrace1(character)) { return brace1 + ""; } 
+		else if(isOther(character)) { return getOther(character); } 
 		
 		
 		return "No Category";
@@ -332,18 +357,64 @@ public class Lexer {
 		return character == 47;
 	}
 	
-	public boolean isBrace1(char character)
+	public String getOther(char character)
 	{
-		return character == brace1;
+		if('{' == character) { return BRACE1; } 
+		if('(' == character) { return PARENS1; } 
+		
+		return "";
+	}
+	
+	public boolean isOther(char character)
+	{
+		if('{' == character) { return true; } 
+		if('(' == character) { return true; }
+		
+		return false;
 	}
 	
 	public boolean isSL1(char character)
 	{
 		if('/' == character)
 		{
-			state = "SL1";
+			state = SL1;
 			return true;
 		}
 		return false;
+	}
+	
+	public void addTokenToList()
+	{
+		String data = "";
+		
+		for(int i = lastPosition; i < position; i++)
+		{
+			data += characterList.get(i);
+		}
+		tokenList.add(new Token(state, data, 0));
+		
+		state = START;
+		lastPosition = position + 1;
+	}
+	
+	public void addOtherTokenToList(String data)
+	{
+		tokenList.add(new Token(state, data, 0));
+		state = START;
+	}
+	
+	public char extractComment(char currentChar)
+	{
+		position += 1;
+		currentChar = nextChar();
+		while(10 != currentChar)
+		{
+			position += 1;
+			currentChar = nextChar();
+		}
+		lastPosition = position;
+		state = START;
+		
+		return currentChar;
 	}
 }
