@@ -6,19 +6,19 @@ import java.util.ArrayList;
 
 public class Lexer {
 	
+	// States
 	private final String START = "START";
 	private final String COMMENT = "COMMENT";
 	private final String LU1 = "LU1";
 	private final String LUTR = "LUTR";
 	private final String DIGIT = "DIGIT";
+	private final String DOT = "DOT";
 	private final String ID = "ID";
 	private final String SIGN = "SIGN";
 	private final String WHITESPACE = "WHITESPACE";
-	private final String SLASH = "SLASH";
 	private final String OTHER = "OTHER";
-	
-	private final char signPlus = '+';
-	private final char signMinus = '-';
+	private final String SL1 = "SL1";
+	private final String QUOTE = "QUOTE";
 	
 	// Multi-char operators
 	private final String opeq = "==";
@@ -36,6 +36,9 @@ public class Lexer {
 	private final String kwdreturn = "return";
 	private final String kwdvars = "vars";
 	private final String kwdwhile = "while";
+	
+	private String[] keywords = { kwdelse, kwdelseif, kwdfcn, kwdif, 
+			kwdmain, kwdprog, kwdreturn, kwdvars, kwdwhile };
 	
 	// Paired delimeters
 	private final char angle1 = '<';
@@ -58,18 +61,19 @@ public class Lexer {
 	private final char caret = '^';
 	private final char plus = '+';
 	private final char minus = '-';
+	private final char exclamation = '!';
 	
 	// Sigils
 	private final char at = '@';
 	private final char hash = '#';
 	private final char usd = '$';
 	
-	//private char[] chArray;
 	private ArrayList<Character> characterList;
 	private ArrayList<Token> tokenList;
 	
 	private int position;
 	private int lastPosition;
+	private int tokenPosition;
 	
 	private String state;
 	
@@ -77,6 +81,7 @@ public class Lexer {
 	{
 		characterList = new ArrayList<Character>();
 		tokenList = new ArrayList<Token>();
+		tokenPosition = 0;
 		state = "START";
 		try
 		{
@@ -85,35 +90,17 @@ public class Lexer {
 			e.printStackTrace();
 		}
 		lexing();
-		//printList();
 	}
 	
 	public void readProgram(String fileName) throws IOException 
 	{
 		FileReader fileReader = new FileReader(fileName);
-		
-		String fileContents = "";
 		int i;
+		
 		while((i = fileReader.read()) != -1) {
 		   char ch = (char)i;
-//		   System.out.println(i + ", " + ch);
-//		   System.out.println("isChar = " + isChar(i) + "\n");
-		 
-		   fileContents += ch; 
 		   
 		   characterList.add(ch);
-		}
-		
-		//System.out.println(fileContents);
-	}
-	
-	public void printList()
-	{
-		//System.out.println(characterList.size());
-		for(int i = 0; i < tokenList.size(); i++)
-		{
-			System.out.println(tokenList.get(i));
-//			System.out.println((int)characterList.get(i));
 		}
 	}
 	
@@ -122,138 +109,166 @@ public class Lexer {
 		position = 0;
 		lastPosition = 0;
 		char currentChar = 0;
-		
-		while(position < characterList.size())
+			
+		do
 		{
 			currentChar = nextChar();
 			
-			System.out.println("\nposition = " + position + ", currentChar = " + currentChar 
-					+ " , " + (int)currentChar);
-			
-			
-			
-			if(9 != (int)currentChar &&     // horizontal tab
-				10 != (int)currentChar && 	// new line feed
-				13 != (int)currentChar && 	// carriage return
-				32 != (int)currentChar &&	// space
-				!getCategory(currentChar).equals("No Category"))	// skip anything not a number
+			if(!getCategory(currentChar).equals("No Category"))	// skip anything not a number
 																	// or digit for now
 			{
 				String cat = getCategory(currentChar);
 				
+				System.out.println("position " + position + " , currentChar = " + currentChar +
+						"\nlastPosition = " + lastPosition + " , " + (int)currentChar +
+						"\nstate = " + state + " , category = " + cat + "\n\n");
+				
 				switch(state)
 				{
 				case START:
-//					String cat = getCategory(currentChar);
-					System.out.println("cat = " + cat);
-					
 					switch(cat)
 					{
 					case LU1:
+						lastPosition = position;
 						state = LU1;
 						break;
 					case DIGIT:
+						lastPosition = position;
 						state = DIGIT;
 						break;
-					case SIGN:
-						//position++;
-						state = "num1"; 
-					// NEED ANOTHER CASE FOR OTHER case OTHER:
-					case brace1 + "":
-						tokenList.add(new Token(state, brace1 + "", 0));
-						state = START;
+					case QUOTE:
+						lastPosition = position;
+						state = QUOTE;
+						break;
+					case SL1:
+						lastPosition = position;
+						state = COMMENT;
+						break;
+					case OTHER: 
+						lastPosition = position;
+						state = OTHER;
+						break;	
+					case WHITESPACE:
+						lastPosition = position + 1;
 						break;
 					default:
 						break;
 					}
 					break;
 				case LU1:
-//					String catt = getCategory(currentChar);
-					System.out.println("in LU1, catt = " + cat + ", state = " + state);
-					
-					if(LUTR == cat)
-					{
-						// save_id_char(currentChar);
-						state = ID;
-					}
-					else 
+					if(WHITESPACE == cat || OTHER == cat)
 					{
 						backup();
-						// do_id();
+						addTokenToList();
+					}
+					else if(LUTR == cat)
+					{
+						state = ID;
 					}
 					
 					break;
-				case ID:
-//					String cattt = getCategory(currentChar);
-					System.out.println("in ID, cattt = " + cat + ", state = " + state);
+				case ID:	
 					if(LUTR == cat)
 					{
-						// save_id_char(currentChar);
 						state = ID;
 					}
-					else 
+					else if(WHITESPACE == cat || OTHER == cat)
+					{
+						System.out.println("WHITESPACE pos = " + position +", lp = " + lastPosition + "\n");
+						backup();
+						addTokenToList();
+						System.out.println("pos = " + position +", lp = " + lastPosition + "\n\n\n");
+					}
+					break;
+				case OTHER:
+					if('=' == currentChar || '!' == currentChar ||
+					   '<' == currentChar || '>' == currentChar ||
+					   hasPairedDelimeters())
+					{
+						System.out.println("hasPairedDelimeters");
+						addTokenToList();
+					}
+					else if(WHITESPACE == cat || OTHER == cat || DIGIT == cat || QUOTE == cat || LU1 == cat)
+					{
+						System.out.println("in other state! pos = " + position +", lp = " + lastPosition + "\n");
+						backup();
+						addOtherTokenToList();
+						System.out.println("pos = " + position +", lp = " + lastPosition + "\n");
+					}
+					break;
+				case DIGIT:
+					if(WHITESPACE == cat || OTHER == cat) 
 					{
 						backup();
-						// do_id();
+						addDigitTokensToList();
 					}
-					
-					//position++;
+					else if(DIGIT == cat)
+					{
+						state = DIGIT;
+					}
+					else if(DOT == cat)
+					{
+						state = DOT;
+					}
 					break;
-				case "SL1":
-					position += 1;
+				case DOT:
+					if(WHITESPACE == cat || OTHER == cat || QUOTE == cat) 
+					{
+						backup();
+						addDoubleTokensToList();
+					}
+					else if(DIGIT == cat)
+					{
+						state = DOT;
+					}
+					else if(DOT == cat)
+					{
+						System.out.println("ERROR: NumberFormatException, Too Many .'s in Double");
+						backup();
+						addDoubleTokensToList();
+						state = START;
+					}
+					break;
+				case QUOTE:
+					System.out.println("currentChar = " + currentChar);
+					extractString(currentChar);
+					break;
+				case COMMENT:
+					System.out.println("\nIN SL1\n");
+					System.out.println("pos = " + position +", lp = " + lastPosition + "\n");
 					currentChar = nextChar();
-					if('/' == currentChar)
+					if(slash == currentChar)
 					{
-						System.out.println("made it");
-						position += 1;
-						currentChar = nextChar();
-						while(10 != currentChar)
-						{
-							position += 1;
-							currentChar = nextChar();
-						}
-						lastPosition = position;
+						extractComment(currentChar);
 					}
-					else 
+					else
 					{
-						backup();
+						System.out.println("Not a Comment.");
 					}
+					break;
 				default:
 					state = "";
-					System.out.println("state = " + state);
 					break;
 				}
 			}
-			else if(32 == currentChar && state.equals(ID))
-			{
-				String data = "";
-				
-				for(int i = lastPosition; i < position; i++)
-				{
-					data += characterList.get(i);
-				}
-				tokenList.add(new Token(state, data, 0));
-				
-				state = START;
-				lastPosition = position + 1;
-			}
-			else if(10 == currentChar)
-			{
-				lastPosition = position;
-				state = START;
-			}
-			else if(13 == currentChar || 9 == currentChar)
-			{
-				lastPosition = position;
-			}
-
-			System.out.println("break");
+			
+			// CAN ADD AN ELSE
+			
+			
 			position++;
+		} while(position <= characterList.size());
+		{
+			System.out.println("end of do while");
+			checkForKeywords();
 		}
 	}
 	
 	public char nextChar()
 	{
+		if(position == characterList.size())
+		{
+			return ' ';
+		}
 		return characterList.get(position);
 	}
 	
@@ -263,22 +278,26 @@ public class Lexer {
 	}
 	
 	public String getCategory(char character)
-	{
-		//int characterInt = (int)character;
-		
+	{		
 		if(isChar(character) && !LU1.equals(state) && !ID.equals(state)) 
 		{ 
 			return LU1; 
 		}
 		else if(isCharOrUnderScore(character)) { return LUTR; }
 		else if(isDigit(character)) { return DIGIT; }
-		else if(isSign(character)) { return SIGN; }
+		else if(isDot(character)) { return DOT; }
+		else if(isQuote(character)) { return QUOTE; }
+//		else if(isSign(character)) { return SIGN; }
 		else if(isWhiteSpace(character)) { return WHITESPACE; } 
-		else if(isSL1(character)) { return "SL1"; } 
-		else if(isBrace1(character)) { return brace1 + ""; } 
-		
+		else if(isSL1(character)) { return SL1; }
+		else if(isOther(character)) { return OTHER; } 
 		
 		return "No Category";
+	}
+	
+	public boolean isCarriageReturn(char character)
+	{
+		return 13 == character;
 	}
 	
 	/**
@@ -314,7 +333,17 @@ public class Lexer {
 	
 	public boolean isDigit(char character)
 	{
-		return (character >= 0 && character <= 9);
+		return (character >= 48 && character <= 57);
+	}
+	
+	public boolean isDot(char character)
+	{
+		return 46 == character;
+	}
+	
+	public boolean isQuote(char character)
+	{
+		return 34 == character;
 	}
 	
 	public boolean isSign(char character)
@@ -324,7 +353,7 @@ public class Lexer {
 	
 	public boolean isWhiteSpace(char character)
 	{
-		return character == 32;
+		return (0 <= character && character <= 32);
 	}
 	
 	public boolean isSlash(char character) 
@@ -332,18 +361,161 @@ public class Lexer {
 		return character == 47;
 	}
 	
-	public boolean isBrace1(char character)
+	public boolean isOther(char character)
 	{
-		return character == brace1;
+		if(brace1 == character) { return true; } 
+		else if(brace2 == character) { return true; } 
+		else if(parens1 == character) { return true; } 
+		else if(parens2 == character) { return true; } 
+		else if(angle1 == character) { return true; } 
+		else if(angle2 == character) { return true; } 
+		else if(bracket1 == character) { return true; } 
+		else if(bracket2 == character) { return true; }
+		else if(comma == character) { return true; } 
+		else if(semi == character) { return true; } 
+		else if(equal == character) { return true; }
+		else if(aster == character) { return true; }
+		else if(slash == character) { return true; }
+		else if(caret == character) { return true; }
+		else if(plus == character) { return true; }
+		else if(minus == character) { return true; }
+		else if(exclamation == character) { return true; }
+		else if(at == character) { return true; }
+		else if(hash == character) { return true; }
+		else if(usd == character) { return true; }
+		
+		return false;
 	}
 	
 	public boolean isSL1(char character)
 	{
-		if('/' == character)
-		{
-			state = "SL1";
-			return true;
-		}
+		if('/' == character) { return true; }
+		
 		return false;
+	}
+		
+	public boolean hasPairedDelimeters()
+	{
+		int nextPos = position + 1;
+		if(nextPos < characterList.size()){ 
+			String nextString = characterList.get(position) + characterList.get(nextPos) + "";
+			
+			if(opeq.equals(nextString)) { return true; }
+			else if(opne.equals(nextString)) { return true; }
+			else if(ople.equals(nextString)) { return true; }
+			else if(opge.equals(nextString)) { return true; } 
+		}	
+		return false;
+	}
+	
+	public void addTokenToList()
+	{
+		String data = "";
+	
+		for(int i = lastPosition; i <= position; i++)
+		{
+			data += characterList.get(i);
+		}
+		tokenList.add(new Token(state, data, -1, -1.0));
+		
+		state = START;
+	}
+	
+	public void addOtherTokenToList()
+	{
+		String data = characterList.get(position) + "";
+		tokenList.add(new Token(state, data, -1, -1.0));
+		state = START;
+	}
+	
+	public void addDigitTokensToList()
+	{
+		String data = "";
+		
+		for(int i = lastPosition; i <= position; i++)
+		{
+			data += characterList.get(i);
+		}
+		int number = Integer.parseInt(data);
+		tokenList.add(new Token(state, null, number, -1.0));
+		
+		state = START;
+	}
+	
+	public void addDoubleTokensToList()
+	{
+		String data = "";
+		
+		for(int i = lastPosition; i <= position; i++)
+		{
+			data += characterList.get(i);
+		}
+		double fp = Double.parseDouble(data);
+		tokenList.add(new Token("DOUBLE", null, -1, fp));
+		
+		state = START;
+	}
+	
+	public void extractComment(char currentChar)
+	{
+		position += 1;
+		currentChar = nextChar();
+		while(10 != currentChar && position < characterList.size())
+		{
+			position += 1;
+			currentChar = nextChar();
+		}
+		state = START;		
+	}
+	
+	public void extractString(char currentChar)
+	{
+		do
+		{
+			System.out.println("in extractString, pos = " + position);
+			position += 1;
+			currentChar = nextChar();
+		}
+		while(34 != currentChar && 10 != currentChar);
+		{
+		}
+		
+		if(10 == currentChar)
+		{
+			System.out.println("\nERROR: Only One Quote In String\n");
+		}
+		else
+		{
+			addTokenToList();
+		}
+		state = START;
+	}
+	
+	public Token nextToken()
+	{
+		Token token = tokenList.get(tokenPosition);
+		tokenPosition++;
+		return token; 
+	}
+	
+	public int getSizeOfTokenList()
+	{
+		return tokenList.size();
+	}
+	
+	public void checkForKeywords()
+	{
+		for(int i = 0; i < tokenList.size(); i++)
+		{
+			for(int j = 0; j < keywords.length; j++)
+			{
+				if(tokenList.get(i).getData() != null && 
+						tokenList.get(i).getData().equalsIgnoreCase(keywords[j]))
+				{
+					//tokenList.get(i).setWord(keywords[j]);
+					tokenList.get(i).setWord("KEYWORD");
+				}
+			}
+		}
 	}
 }
