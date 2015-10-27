@@ -1,10 +1,7 @@
 package com.csulb.compiler;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
 public class Lexer {
@@ -15,18 +12,13 @@ public class Lexer {
 	private final String LU1 = "LU1";
 	private final String LUTR = "LUTR";
 	private final String DIGIT = "DIGIT";
+	private final String DOT = "DOT";
 	private final String ID = "ID";
 	private final String SIGN = "SIGN";
 	private final String WHITESPACE = "WHITESPACE";
-	private final String SLASH = "SLASH";
 	private final String OTHER = "OTHER";
 	private final String SL1 = "SL1";
-	private final String BRACE1 = "BRACE1";
-	private final String PARENS1 = "PARENS1";
-	
-	// Signs
-	private final char signPlus = '+';
-	private final char signMinus = '-';
+	private final String QUOTE = "QUOTE";
 	
 	// Multi-char operators
 	private final String opeq = "==";
@@ -39,11 +31,15 @@ public class Lexer {
 	private final String kwdelseif = "elseif";
 	private final String kwdfcn = "fcn";
 	private final String kwdif = "if";
+	private final String kwdinput = "input";
 	private final String kwdmain = "main";
 	private final String kwdprog = "prog";
 	private final String kwdreturn = "return";
 	private final String kwdvars = "vars";
 	private final String kwdwhile = "while";
+	
+	private String[] keywords = { kwdelse, kwdelseif, kwdfcn, kwdif, 
+			kwdinput, kwdmain, kwdprog, kwdreturn, kwdvars, kwdwhile };
 	
 	// Paired delimeters
 	private final char angle1 = '<';
@@ -66,25 +62,31 @@ public class Lexer {
 	private final char caret = '^';
 	private final char plus = '+';
 	private final char minus = '-';
+	private final char exclamation = '!';
 	
 	// Sigils
 	private final char at = '@';
 	private final char hash = '#';
 	private final char usd = '$';
 	
-	//private char[] chArray;
 	private ArrayList<Character> characterList;
 	private ArrayList<Token> tokenList;
 	
 	private int position;
 	private int lastPosition;
+	private int tokenPosition;
 	
 	private String state;
 	
+	/**
+	 * Constructor to initialize variables
+	 * @param fileName - name of file to do lexical analysis on
+	 */
 	public Lexer(String fileName) 
 	{
 		characterList = new ArrayList<Character>();
 		tokenList = new ArrayList<Token>();
+		tokenPosition = 0;
 		state = "START";
 		try
 		{
@@ -95,6 +97,12 @@ public class Lexer {
 		lexing();
 	}
 	
+	/**
+	 * Reads in a file and puts contents in to an ArrayList of
+	 * characters
+	 * @param fileName - name of file to do lexical analysis on
+	 * @throws IOException - if file is not found or is corrupt
+	 */
 	public void readProgram(String fileName) throws IOException 
 	{
 		FileReader fileReader = new FileReader(fileName);
@@ -107,188 +115,181 @@ public class Lexer {
 		}
 	}
 	
-	public void printList()
-	{
-		//System.out.println(characterList.size());
-		for(int i = 0; i < tokenList.size(); i++)
-		{
-			System.out.println(tokenList.get(i));
-//			System.out.println((int)characterList.get(i));
-		}
-	}
-	
+	/**
+	 * Scans each character in the characterList and determines
+	 * if it is a Token based on a finite state machine
+	 */
 	public void lexing() 
 	{
 		position = 0;
 		lastPosition = 0;
 		char currentChar = 0;
-		
-		try {
-			PrintWriter writer = new PrintWriter("the-file-name.txt", "UTF-8");
 			
-			while(position < characterList.size())
+		do
+		{
+			currentChar = nextChar();
+			
+			if(!getCategory(currentChar).equals("No Category"))	// skip anything not a number
+																	// or digit for now
 			{
-				currentChar = nextChar();
+				String cat = getCategory(currentChar);
 				
-				System.out.println("\nposition = " + position + ", currentChar = " + currentChar 
-						+ " , " + (int)currentChar);
-				writer.println("\nposition = " + position + ", currentChar = " + currentChar 
-						+ " , " + (int)currentChar);
-				
-				
-				if(9 != (int)currentChar &&     // horizontal tab
-					10 != (int)currentChar && 	// new line feed
-					13 != (int)currentChar && 	// carriage return
-					!getCategory(currentChar).equals("No Category"))	// skip anything not a number
-																		// or digit for now
+				switch(state)
 				{
-					String cat = getCategory(currentChar);
-					System.out.println("state = " + state);
-					
-					switch(state)
+				case START:
+					switch(cat)
 					{
-					case START:
-//						String cat = getCategory(currentChar);
-						System.out.println("cat = " + cat);
-						writer.println("cat = " + cat);
-						
-						switch(cat)
-						{
-						case LU1:
-							state = LU1;
-							break;
-						case DIGIT:
-							state = DIGIT;
-							break;
-						case SIGN:
-							//position++;
-							state = "num1"; 
-						// NEED ANOTHER CASE FOR OTHER case OTHER:
-						case BRACE1:
-							addOtherTokenToList(brace1 + "");
-//							tokenList.add(new Token(state, brace1 + "", 0));
-//							state = START;
-							break;
-						default:
-							break;
-						}
-						break;
 					case LU1:
-//						String catt = getCategory(currentChar);
-						System.out.println("in LU1, catt = " + cat + ", state = " + state);
-						writer.println("in LU1, catt = " + cat + ", state = " + state);
-						
-						if(LUTR == cat)
-						{
-							// save_id_char(currentChar);
-							state = ID;
-						}
-						else if(WHITESPACE == cat) 
-						{
-							writer.println("made it to LU1!");
-							addTokenToList();
-						}
-						else 
-						{
-							backup();
-							// do_id();
-						}
-						
+						lastPosition = position;
+						state = LU1;
 						break;
-					case ID:
-						System.out.println("in ID, cattt = " + cat + ", state = " + state);
-						writer.println("in ID, cattt = " + cat + ", state = " + state);
-						
-						if(LUTR == cat)
-						{
-							// save_id_char(currentChar);
-							state = ID;
-						}
-						else if(WHITESPACE == cat)
-						{
-							addTokenToList();
-							//state = START;
-						}
-						else 
-						{
-							//backup();
-							// do_id();
-							addTokenToList();
-							state = PARENS1;		
-						}
-						
+					case DIGIT:
+						lastPosition = position;
+						state = DIGIT;
 						break;
-					case PARENS1: 
-						if(WHITESPACE == cat)
-						{
-							lastPosition = position + 1;
-							state = START;
-						}
-						else 
-						{
-							addOtherTokenToList(parens1 + "");
-//							tokenList.add(new Token(state, parens1 + "", 0));
-//							state = START;
-						}
+					case QUOTE:
+						lastPosition = position;
+						state = QUOTE;
 						break;
 					case SL1:
-						position += 1;
-						currentChar = nextChar();
-						if('/' == currentChar)
-						{
-							currentChar = extractComment(currentChar);
-						}
-						else 
-						{
-							backup();
-						}
+						lastPosition = position;
+						state = COMMENT;
+						break;
+					case OTHER: 
+						lastPosition = position;
+						state = OTHER;
+						break;	
+					case WHITESPACE:
+						lastPosition = position + 1;
 						break;
 					default:
-						state = "";
-						System.out.println("default state = " + state);
-						writer.println("default state = " + state);
 						break;
 					}
+					break;
+				case LU1:
+					if(WHITESPACE == cat || OTHER == cat || DIGIT == cat || QUOTE == cat)
+					{
+						backup();
+						addTokenToList();
+					}
+					else if(LUTR == cat || DIGIT == cat)
+					{
+						state = ID;
+					}
+					
+					break;
+				case ID:	
+					if(LUTR == cat || DIGIT == cat)
+					{
+						state = ID;
+					}
+					else if(WHITESPACE == cat || OTHER == cat || QUOTE == cat)
+					{
+						backup();
+						addTokenToList();
+					}
+					break;
+				case OTHER:
+					if('=' == currentChar || '!' == currentChar ||
+					   '<' == currentChar || '>' == currentChar ||
+					   hasPairedDelimeters())
+					{
+						addTokenToList();
+					}
+					else if(WHITESPACE == cat || OTHER == cat || DIGIT == cat || QUOTE == cat || LU1 == cat)
+					{
+						backup();
+						addOtherTokenToList();
+					}
+					break;
+				case DIGIT:
+					if(WHITESPACE == cat || OTHER == cat || QUOTE == cat || LU1 == cat) 
+					{
+						backup();
+						addDigitTokensToList();
+					}
+					else if(DIGIT == cat)
+					{
+						state = DIGIT;
+					}
+					else if(DOT == cat)
+					{
+						state = DOT;
+					}
+					break;
+				case DOT:
+					if(WHITESPACE == cat || OTHER == cat || QUOTE == cat) 
+					{
+						backup();
+						addDoubleTokensToList();
+					}
+					else if(DIGIT == cat)
+					{
+						state = DOT;
+					}
+					else if(DOT == cat)
+					{
+						System.out.println("ERROR: NumberFormatException, Too Many .'s in Double");
+						backup();
+						addDoubleTokensToList();
+						state = START;
+					}
+					break;
+				case QUOTE:
+					extractString(currentChar);
+					break;
+				case COMMENT:
+					currentChar = nextChar();
+					if(slash == currentChar)
+					{
+						extractComment(currentChar);
+					}
+					else
+					{
+						backup();
+						addOtherTokenToList();
+						state = START;
+					}
+					break;
+				default:
+					state = "";
+					break;
 				}
-				else if(10 == currentChar)
-				{
-					lastPosition = position + 1;
-					state = START;
-				}
-				else if(13 == currentChar || 9 == currentChar)
-				{
-					lastPosition = position + 1;
-					state = START;
-					System.out.println("state = "+ state);
-					writer.println("state = "+ state);
-				}
-
-				System.out.println("state = " + state + "\nbreak");
-				writer.println("state = " + state + "\nbreak");
-				position++;
 			}
-			
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
 
+			position++;
+		} while(position <= characterList.size());
+		{
+			checkForKeywords();
+		}
 	}
 	
+	/**
+	 * Gets the next character in the characterList
+	 * @return - the next character
+	 */
 	public char nextChar()
 	{
+		if(position == characterList.size())
+		{
+			return ' ';
+		}
 		return characterList.get(position);
 	}
 	
+	/**
+	 * Sets position back one step
+	 */
 	public void backup()
 	{
 		position--;
 	}
 	
+	/**
+	 * Gets the category of a specific character
+	 * @param character - to be analyzed 
+	 * @return - Category of the character
+	 */
 	public String getCategory(char character)
 	{		
 		if(isChar(character) && !LU1.equals(state) && !ID.equals(state)) 
@@ -297,14 +298,41 @@ public class Lexer {
 		}
 		else if(isCharOrUnderScore(character)) { return LUTR; }
 		else if(isDigit(character)) { return DIGIT; }
-		else if(isSign(character)) { return SIGN; }
+		else if(isDot(character)) { return DOT; }
+		else if(isQuote(character)) { return QUOTE; }
+//		else if(isSign(character)) { return SIGN; }
 		else if(isWhiteSpace(character)) { return WHITESPACE; } 
-		else if(isSL1(character)) { return "SL1"; } 
-		else if(isOther(character)) { return getOther(character); } 
-		
+		else if(isSL1(character)) { return SL1; }
+		else if(isOther(character)) { return OTHER; } 
 		
 		return "No Category";
 	}
+	
+	public String getOther(char character)
+	{
+		if(brace1 == character) { return brace1 + ""; } 
+		else if(brace2 == character) { return brace2 + ""; } 
+		else if(parens1 == character) { return parens1 + ""; } 
+		else if(parens2 == character) { return parens2 + ""; } 
+		else if(angle1 == character) { return angle1 + ""; } 
+		else if(angle2 == character) { return angle2 + ""; } 
+		else if(bracket1 == character) { return bracket1 + ""; } 
+		else if(bracket2 == character) { return bracket2 + ""; }
+		else if(comma == character) { return comma + ""; } 
+		else if(semi == character) { return semi + ""; } 
+		else if(equal == character) { return equal + ""; }
+		else if(aster == character) { return aster + ""; }
+		else if(slash == character) { return slash + ""; }
+		else if(caret == character) { return caret + ""; }
+		else if(plus == character) { return plus + ""; }
+		else if(minus == character) { return minus + ""; }
+		else if(exclamation == character) { return exclamation + ""; }
+		else if(at == character) { return at + ""; }
+		else if(hash == character) { return hash + ""; }
+		else if(usd == character) { return usd + ""; }
+		
+		return "OTHER";
+	}	
 	
 	/**
 	 * Function to check for character a-z or A-Z
@@ -322,7 +350,7 @@ public class Lexer {
 	}
 
 	/**
-	 * Function to check for character a-z or A-Z or _
+	 * Check for character a-z or A-Z or _
 	 * @param character
 	 * @return
 	 */
@@ -337,84 +365,288 @@ public class Lexer {
 		return false;
 	}
 	
+	/**
+	 * Check if character is a digit according to the 
+	 * ASCII table number
+	 * @param character - to be analyzed
+	 * @return - True if it is a digit, false otherwise
+	 */
 	public boolean isDigit(char character)
 	{
-		return (character >= 0 && character <= 9);
+		return (character >= 48 && character <= 57);
 	}
 	
+	/**
+	 * Check if character is a period according to the 
+	 * ASCII table number
+	 * @param character - to be analyzed
+	 * @return - True if it is a period, false otherwise
+	 */
+	public boolean isDot(char character)
+	{
+		return 46 == character;
+	}
+	
+	/**
+	 * Check if character is a quote according to the 
+	 * ASCII table number
+	 * @param character - to be analyzed
+	 * @return - True if it is a quote, false otherwise
+	 */
+	public boolean isQuote(char character)
+	{
+		return 34 == character;
+	}
+	
+	/**
+	 * Check if character is a +/- according to the 
+	 * ASCII table number
+	 * @param character - to be analyzed
+	 * @return - True if it is a +/-, false otherwise
+	 */
 	public boolean isSign(char character)
 	{
 		return (character == 43 || character == 45);
 	}
 	
+	/**
+	 * Check if character is a whitespace, carriage return, tab,
+	 * line feed, or any control character according to the 
+	 * ASCII table number
+	 * @param character - to be analyzed
+	 * @return - True if it is a whitespace, carriage return, tab,
+	 * line feed, or any control character, false otherwise
+	 */
 	public boolean isWhiteSpace(char character)
 	{
-		return character == 32;
+		return (0 <= character && character <= 32);
 	}
 	
+	/**
+	 * Check if character is a slash according to the 
+	 * ASCII table number
+	 * @param character - to be analyzed
+	 * @return - True if it is a slash, false otherwise
+	 */
 	public boolean isSlash(char character) 
 	{
 		return character == 47;
 	}
 	
-	public String getOther(char character)
-	{
-		if('{' == character) { return BRACE1; } 
-		if('(' == character) { return PARENS1; } 
-		
-		return "";
-	}
-	
+	/**
+	 * Check if character is considered other
+	 * @param character - to be analyzed
+	 * @return - True if it is an other char
+	 */
 	public boolean isOther(char character)
 	{
-		if('{' == character) { return true; } 
-		if('(' == character) { return true; }
+		if(brace1 == character) { return true; } 
+		else if(brace2 == character) { return true; } 
+		else if(parens1 == character) { return true; } 
+		else if(parens2 == character) { return true; } 
+		else if(angle1 == character) { return true; } 
+		else if(angle2 == character) { return true; } 
+		else if(bracket1 == character) { return true; } 
+		else if(bracket2 == character) { return true; }
+		else if(comma == character) { return true; } 
+		else if(semi == character) { return true; } 
+		else if(equal == character) { return true; }
+		else if(aster == character) { return true; }
+		else if(slash == character) { return true; }
+		else if(caret == character) { return true; }
+		else if(plus == character) { return true; }
+		else if(minus == character) { return true; }
+		else if(exclamation == character) { return true; }
+		else if(at == character) { return true; }
+		else if(hash == character) { return true; }
+		else if(usd == character) { return true; }
 		
 		return false;
 	}
 	
+	/**
+	 * Checks if character is a slash
+	 * @param character - to be analyzed
+	 * @return - true if it is a slash
+	 */
 	public boolean isSL1(char character)
 	{
-		if('/' == character)
-		{
-			state = SL1;
-			return true;
-		}
+		if('/' == character) { return true; }
+		
+		return false;
+	}
+		
+	/**
+	 * Check if a combination of characters are
+	 * paired delimeters
+	 * @return - true if they are a pair of delimeters
+	 */
+	public boolean hasPairedDelimeters()
+	{
+		int nextPos = position + 1;
+		if(nextPos < characterList.size()){ 
+			String nextString = characterList.get(position) + characterList.get(nextPos) + "";
+			
+			if(opeq.equals(nextString)) { return true; }
+			else if(opne.equals(nextString)) { return true; }
+			else if(ople.equals(nextString)) { return true; }
+			else if(opge.equals(nextString)) { return true; } 
+		}	
 		return false;
 	}
 	
+	/**
+	 * Add a Token to the tokenList
+	 * Sets state back to start
+	 */
 	public void addTokenToList()
 	{
 		String data = "";
-		
-		for(int i = lastPosition; i < position; i++)
+	
+		for(int i = lastPosition; i <= position; i++)
 		{
 			data += characterList.get(i);
 		}
-		tokenList.add(new Token(state, data, 0));
+		tokenList.add(new Token(state, data, -1, -1.0));
 		
 		state = START;
-		lastPosition = position + 1;
 	}
 	
-	public void addOtherTokenToList(String data)
+	/**
+	 * Adds an Other Token to the tokenList
+	 * Sets state back to start
+	 */
+	public void addOtherTokenToList()
 	{
-		tokenList.add(new Token(state, data, 0));
+		
+		String data = characterList.get(position) + "";
+		tokenList.add(new Token(state, data, -1, -1.0));
 		state = START;
 	}
 	
-	public char extractComment(char currentChar)
+	/**
+	 * Adds a Digit to the tokenList
+	 * Sets state back to start
+	 */
+	public void addDigitTokensToList()
+	{
+		String data = "";
+		
+		for(int i = lastPosition; i <= position; i++)
+		{
+			data += characterList.get(i);
+		}
+		int number = Integer.parseInt(data);
+		tokenList.add(new Token(state, null, number, -1.0));
+		
+		state = START;
+	}
+	
+	/**
+	 * Adds a Double to the tokenList
+	 * Sets state back to start
+	 */
+	public void addDoubleTokensToList()
+	{
+		String data = "";
+		
+		for(int i = lastPosition; i <= position; i++)
+		{
+			data += characterList.get(i);
+		}
+		double fp = Double.parseDouble(data);
+		tokenList.add(new Token("DOUBLE", null, -1, fp));
+		
+		state = START;
+	}
+	
+	/**
+	 * Extracts a comment, after the slashes it reads
+	 * until the next line
+	 * @param currentChar - character that is currently
+	 * being looked at, then proceeds until a new line
+	 */
+	public void extractComment(char currentChar)
 	{
 		position += 1;
 		currentChar = nextChar();
-		while(10 != currentChar)
+		while(10 != currentChar && position < characterList.size())
 		{
 			position += 1;
 			currentChar = nextChar();
 		}
-		lastPosition = position;
-		state = START;
+		state = START;		
+	}
+	
+	/**
+	 * Extract a string which is in double quotes,
+	 * if there is not a second double quote it 
+	 * reads to the end of the line and throws out
+	 * the characters and prints error for user
+	 * @param currentChar - to be analyzed
+	 */
+	public void extractString(char currentChar)
+	{
+		do
+		{
+			position += 1;
+			currentChar = nextChar();
+		}
+		while(34 != currentChar && 10 != currentChar);
+		{
+		}
 		
-		return currentChar;
+		if(10 == currentChar)
+		{
+			System.out.println("\nERROR: Only One Quote In String\n");
+		}
+		else
+		{
+			state = "string";
+			addTokenToList();
+		}
+		state = START;
+	}
+	
+	/**
+	 * Gets the next token from the tokenList, since
+	 * tokenPosition is incremented after the .get
+	 * it should never go past the size of the list
+	 * @return - the token
+	 */
+	public Token nextToken()
+	{
+		Token token = tokenList.get(tokenPosition);
+		tokenPosition++;
+		return token; 
+	}
+	
+	/**
+	 * Size of the tokenList
+	 * @return - tokenList size
+	 */
+	public int getSizeOfTokenList()
+	{
+		return tokenList.size();
+	}
+	
+	/**
+	 * Checks if any of the contents of the tokenList
+	 * are keywords, if so then update the Token object
+	 */
+	public void checkForKeywords()
+	{
+		for(int i = 0; i < tokenList.size(); i++)
+		{
+			for(int j = 0; j < keywords.length; j++)
+			{
+				if(tokenList.get(i).getData() != null && 
+						tokenList.get(i).getData().equalsIgnoreCase(keywords[j]))
+				{
+					tokenList.get(i).setWord("kwd" + keywords[j]);
+					//tokenList.get(i).setWord("KEYWORD");
+				}
+			}
+		}
 	}
 }
