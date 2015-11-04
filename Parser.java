@@ -19,6 +19,57 @@ public class Parser {
 	{
 		m_stack.push("EOF");
 		m_stack.push("PGM");
+	
+/*
+		Token token = null;
+		String tokenType = null;
+		String data = null;
+		String prediction = null;
+		
+		while(true)
+		{
+
+			token = m_lex.nextToken();
+			tokenType = token.getWord();
+			data = token.getData();
+			prediction = m_stack.peek();
+			
+			System.out.println("\nprediction = " + prediction + ", token = " + tokenType + ", data = " + data );
+			
+			if(prediction == tokenType)
+			{
+				if(tokenType.equals("EOF"))
+				{
+					break;
+				}
+				m_stack.pop();
+				System.out.println("pop");
+			}
+			
+			else if(m_matrix.isTerminal(prediction))
+			{
+				throw new Exception("Error: at " + token.getLineNumber() + " at Expected " 
+						+ prediction + " but saw " + tokenType);
+			}
+			else
+			{
+				String rule = m_matrix.getRule(prediction, tokenType);
+				System.out.println("rule = " + rule);
+				
+				if("NO RULE".equals(rule))
+				{
+					throw new Exception("Error: at " + token.getLineNumber() + " at Expected " 
+							+ prediction + " but saw " + tokenType);
+				}
+				else {
+					//m_stack.pop();
+					if(!rule.equals("eps")) 
+					{
+						pushTheRule(rule);
+					}
+				}
+			}
+*/		
 		
 		Token token = m_lex.nextToken();
 		String tokenType = token.getWord();
@@ -30,8 +81,6 @@ public class Parser {
 			prediction = m_stack.pop();
 			
 			System.out.println("\nprediction = " + prediction + ", token = " + tokenType + ", data = " + data );
-			
-			
 			
 			if(m_matrix.isNonTerminal(prediction)) 
 			{
@@ -46,35 +95,45 @@ public class Parser {
 					pushTheRule(rule);
 				}
 			}
-			else if(m_matrix.isTerminal(prediction))
+			//else if(m_matrix.isTerminal(prediction))
+			else if(tokenType.equals(prediction))
 			{
+				/*
 				if(!prediction.equals(tokenType))
 				{
 					throw new Exception("Error: at " + token.getLineNumber() + " at Expected " 
 							+ prediction + " but saw " + tokenType);
 				}
-				else 
-				{
+				*/
+				//else 
+				//{
 					System.out.println("MATCH: [" + tokenType + "]");
 					token = m_lex.nextToken();
 					tokenType = token.getWord();
 					data = token.getData();
-				}
+				//}
 			}
+			else if(prediction.equals("eps"))
+			{
+				// if epsilon then continue
+			}			
+			else if(!prediction.equals(tokenType))
+			{
+				throw new Exception("Error: at " + token.getLineNumber() + " at Expected " 
+						+ prediction + " but saw " + tokenType);
+			}
+/*			
 			else if(prediction.equals("equal") && tokenType.equals("equal"))
 			{ // if it's an equal sign then eat it
 				token = m_lex.nextToken();
 				tokenType = token.getWord();
 				data = token.getData();
 			}
-			else if(prediction.equals("eps"))
-			{
-				// if epsilon then continue
-			}
+*/
 			if(tokenType.equals("EOF"))
 			{
 				break;
-			}
+			}			
 			System.out.println("..................................");
 			for(String st : m_stack) 
 			{
