@@ -5,23 +5,26 @@ import java.util.Stack;
 public class Parser {
 	
 	Lexer m_lex;
-	Stack<String> m_stack;
+	Stack<Node> m_stack;
 	Matrix m_matrix;
 	String[] m_endTokens = { "semi", "brace2", "EOF" };
 	boolean errors = false;
+	Node rootNode;
+	Rule lastRule = null;
+	TreeNode root = null;
 	
 	public Parser(String inputFile) 
 	{
 		m_lex = new Lexer(inputFile);
-		m_stack = new Stack<String>();
+		m_stack = new Stack<Node>();
 		m_matrix = new Matrix();
+		rootNode = null;
 	}
 	
 	public void parse() //throws Exception
 	{
-		m_stack.push("EOF");
-		m_stack.push("PGM");
-	
+		m_stack.push(new Node("EOF"));
+		m_stack.push(new Node("PGM"));
 		
 		Token token = m_lex.nextToken();
 		String tokenType = token.getWord();
@@ -30,9 +33,12 @@ public class Parser {
 		
 		while(true)
 		{
-			prediction = m_stack.pop();
+			Node currentNode = m_stack.pop();
+			prediction = currentNode.getData();
 			
 			System.out.println("\nprediction = " + prediction + ", token = " + tokenType + ", data = " + data );
+			
+			addNode(currentNode, token);
 			
 			if(tokenType.equals(prediction))
 			{
@@ -46,7 +52,9 @@ public class Parser {
 			{
 				String rule = m_matrix.getRule(prediction, tokenType);
 				System.out.println("rule = " + rule);
-				if("error".equals(rule))
+				Rule rulex = new Rule(prediction, rule);
+				
+				if("error".equals(rulex.getRHS()[0]))
 				{	
 					try {
 						errorRecovery(prediction, token);
@@ -60,7 +68,8 @@ public class Parser {
 					System.out.println("token = " + token.getWord());
 				}
 				else {
-					pushTheRule(rule);
+					lastRule = rulex;
+					pushTheRule(currentNode, rulex);
 				}
 			}
 			else if(prediction.equals("eps"))
@@ -88,7 +97,7 @@ public class Parser {
 			System.out.println("..................................");
 			System.out.println("...top of stack...");
 			for (int i = m_stack.size() - 1; i >= 0; i--) {
-			    System.out.println("\t" + m_stack.get(i));
+			    System.out.println("\t" + m_stack.get(i).getData());
 			}
 			System.out.println("...bottom of stack...");
 		}
@@ -121,8 +130,8 @@ public class Parser {
 			{
 				for(int i = 0; i < m_endTokens.length; i++)
 				{
-					System.out.println("m_endTokens[i] = " + m_endTokens[i] +
-							", prediction = " + prediction);
+//					System.out.println("m_endTokens[i] = " + m_endTokens[i] +
+//							", prediction = " + prediction);
 					
 					if(m_endTokens[i].equals(prediction))
 					{
@@ -138,7 +147,7 @@ public class Parser {
 				//get the next token until it is an end token
 				if(!m_stack.isEmpty())
 				{
-					prediction = m_stack.peek();
+					prediction = m_stack.peek().getData();
 				}
 				//if recovery cannot be made let user know
 				if(!found && m_stack.isEmpty())
@@ -159,28 +168,139 @@ public class Parser {
 		}
 	}
 	
-	public void pushTheRule(String rule)
+	public void predictRule(Rule rx)
 	{
-		if(rule.contains(" "))
+		Node mom = m_stack.pop();
+		//for(int i = )
+	}
+	
+	public void pushTheRule(Node currentNode, Rule rule)
+	{
+		String[] ruleRHS = rule.getRHS();
+
+		for(int i = ruleRHS.length - 1; i >= 0; i--)
 		{
-			int ws = rule.length();
-			for(int i = rule.length() - 1; i >= 0; i--)
+			if(null != ruleRHS[i])
 			{
-				if(rule.charAt(i) == 32)
+				m_stack.push(new Node(ruleRHS[i]));			
+			}
+		}
+		
+		Node[] kids = new Node[ruleRHS.length];
+		for(int i = 0; i < ruleRHS.length; i++)
+		{
+			if(null != ruleRHS[i])
+			{
+				kids[i] = new Node(ruleRHS[i]);
+			}
+		}
+		
+		//addToParseTree(currentNode, kids);
+	}
+	
+	public void addNode(Node a_node, Token a_token)
+	{
+		if(null == root)
+		{
+			//rootNode = a_node;
+			root = a_node;
+		}
+		else
+		{
+			Node focusNode = rootNode;
+			if(!m_matrix.isNonTerminal(a_node.getData()))
+			{
+				focusNode.addKid(a_node);
+			}
+			else 
+			{
+				Node parent;
+				while(true)
 				{
-					m_stack.push(rule.substring(i+1, ws));
-					ws = i;
-				}
-				else if(i == 0)
-				{
-					m_stack.push(rule.substring(i, ws));
-					ws = i;
+					parent = focusNode;
 				}
 			}
 		}
-		else {
-			m_stack.push(rule);
+	}
+	
+	public void addToParseTree(Node currentNode, Node[] kids)
+	{
+		if(null == rootNode)
+		{
+			rootNode = currentNode;
+			System.out.println("root: " + rootNode.hasKids());
+			rootNode.setKids(kids);
+			System.out.println(kids.length + " " + rootNode.getKids().length);
+			for(int i = 0; i < rootNode.getKids().length; i++)
+			{
+				System.out.println("\t" + rootNode.getKids()[i]);
+			}
+			System.out.println("root: " + rootNode.hasKids());
 		}
+		else 
+		{
+			System.out.println("ADD TO PT");
+			int index = 0;
+			for(int i = 0; i < rootNode.getKids().length; i++)
+			{
+				if(rootNode.getKids()[i].getData() == currentNode.getData())
+				{
+					currentNode = rootNode.getKids()[i];
+				}
+			}
+			if(m_matrix.isNonTerminal(currentNode.getData()))
+			{
+				currentNode.setKids(kids);
+				for(int i = 0; i < currentNode.getKids().length; i++)
+				{
+					System.out.println("\t" + currentNode.getKids()[i]);
+				}
+			}
+		}
+		
+		
+/*
+		String[] ruleRHS = rule.getRHS();
+		Node[] nodes = new Node[5];
+		for(int i = 0; i < ruleRHS.length; i++)
+		{
+			if(null != ruleRHS[i])
+			{
+				System.out.println("ruleRHS = " + ruleRHS[i]);
+				nodes[i] = new Node(new Symbol(ruleRHS[i]));
+			}
+		}
+		
+		for(int i = ruleRHS.length - 1; i >= 0; i--)
+		{
+			if(null != ruleRHS[i])
+			{
+				Node newnew = new Node(new Symbol(ruleRHS[i]));
+				m_stack.push(newnew);			
+			}
+		}
+		for(int i = 0; i < nodes.length; i++) 
+		{
+			if(null != nodes[i])
+			{	
+				System.out.println(nodes[i].getSymbol());
+			}
+		}
+		Node node = new Node(new Symbol(rule.getLHS()));
+		node.setKids(nodes);
+		System.out.println(node);
+//		ParseTree pt = new ParseTree();
+//		pt.addNode(node);
+//		System.out.println("In preorderTraverseTree");
+//		pt.preorderTraverseTree(node);
+//		System.out.println("Out preorderTraverseTree");
+		
+		if(null == rootNode)
+		{
+			rootNode = node;
+			System.out.println("added");
+		}
+*/
 	}
 	
 	public void displayStack()
