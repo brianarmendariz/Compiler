@@ -7,6 +7,8 @@ public class Node extends Symbol {
 	private Node[] kids;
 	private int kidCount;
 	private int position;
+	
+	private Node parent;
 
 	public Node()
 	{
@@ -36,10 +38,19 @@ public class Node extends Symbol {
 		}
 	}
 	
-	public void addKid(Node kid)
+	public void add(Node kid)
 	{
 		kids[position] = kid;
 		++position;
+		
+		kid.parent = this;
+	}
+	
+	public void add(Node kid, int pos)
+	{
+		kids[pos] = kid;
+		
+		kid.parent = this;
 	}
 	
 	public boolean hasKids()
@@ -67,23 +78,27 @@ public class Node extends Symbol {
 	{
 		return kids;
 	}
-	
+
+	public int depth ()
+	{
+	  int depth = recurseDepth( parent, 0 );
+	  return depth;
+	}
+
+	private int recurseDepth(Node node, int depth)
+	{
+	  if (node == null)  // reached top of tree
+	  {
+	    return depth;
+	  }
+	  else
+	  {
+	    return recurseDepth(node.parent, depth + 1);
+	  }
+	}
+
 	public String toString()
 	{
-/*
-		StringBuilder sb = new StringBuilder();
-		sb.append("Parent: " + getData() + "\nKids:\n");
-		for(int i = 0; i < kids.length; i++)
-		{
-		 	if(null != kids[i])
-		 	{
-		 		sb.append("\t" + i + " " + kids[i].getData() + "\n");
-		 	}
-		}
-		return sb.toString();
-*/
 		return getData();
 	}
-	
-
 }
